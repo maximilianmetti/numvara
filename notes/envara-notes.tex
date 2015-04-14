@@ -1,0 +1,671 @@
+\documentclass[final,10pt]{article}
+
+\textheight=9.in \textwidth=6.5in \oddsidemargin=0in
+\evensidemargin=0in \hoffset=0.cm \voffset=-0.7in
+
+\usepackage{amsmath,graphicx,latexsym,amssymb, amscd, psfrag,verbatim}%,hyperref}
+\usepackage{amsfonts,bm,mathrsfs}
+\usepackage{algorithmic,algorithm}
+\usepackage{color}
+
+\newtheorem{proposition}{Proposition}
+\newtheorem{problem}{Problem}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{example}{Example}
+\newtheorem{remark}{Remark}
+\newtheorem{corollary}{Corollary}
+
+\begin{document}
+
+\title{Energetic Variational Analysis: Notes on Numerics}
+\author{Maximilian S.~Metti}
+\maketitle
+
+
+The Energetic Variational Approach is a framework for describing dynamic physical processes.
+Most generally, it is rooted in the Laws of Thermodynamics,
+the Least Action Principle, the Maximum Dissipation Principle, and Newton's Force Balance Law.
+In addition to these basic principles, further modeling assumptions must be made to define a physical system;
+namely, an Energy functional and a Dissipation functional must be prescribed,
+which are functionals of an initial condition, a flow map, a velocity vector, and a deformation tensor.
+In addition, the space of admissible flow maps must be given along with its tangent spaces.
+From these given data, calculus of variations are employed to determine the evolution of the dynamical system.
+
+
+\section{Kinematics and Notation}
+
+Let $\hat{\Omega} \subset \mathbb{R}^d$ and $\Omega(t) \subset \mathbb{R}^d$ for $0 \le t \le T$,
+where the volume $\Omega(t)$ deforms continuously with respect to $t$.
+Specifically, we assume the existence of a bijective and differentiable \emph{flow map}
+that satisfies $\bm{x}(\cdot,t): \hat{\Omega}\rightarrow\Omega(t)$, for each $t$.
+When $t=0$, we require $\hat{\Omega} = \Omega(0)$.
+From this perspective, $\bm x(\cdot,t)$ is a mapping between volumes.
+Alternatively, for a fixed $\hat{\bm x}$ in $\hat{\Omega}$, the flow map $\bm x(\hat{\bm x}, t)$ traces out a trajectory in $\mathbb{R}^{d+1}$.
+Let $\bm v(\bm x,t)$ denote the velocity of the flow map satisfying $\bm v(\bm x(\hat{\bm x},t),t) \equiv  \frac{\partial}{{\partial t}}\bm x(\hat{\bm x},t)$;
+then, the flow map defines the \emph{flow lines} of the ordinary differential equation,
+\[
+	\left\{ \begin{matrix}	\bm x_t (\hat{\bm x},t)	&= \bm v \big(\bm x(\hat{\bm x},t),t \big),	&&	t>0	\\
+					\bm x (\hat{\bm x},0)	&= \hat{\bm x}.	\end{matrix} \right.
+\]
+We define the pull-back of the velocity (whenever possible) in the usual way: $\hat{ \bm v}(\hat{\bm x},t) \equiv \bm v(\bm x(\hat{ \bm x},t),t)$.
+We define the deformation tensor to be $\hat{\bm F}(\hat{\bm x},t) \equiv \frac{\partial}{{\partial \hat{\bm x}}}\bm x(\hat{\bm x},t)$.
+The push-forward of the deformation tensor is given by $\bm F(\bm x(\hat{\bm x},t),t) = \hat{\bm F}(\hat{\bm x},t)$.
+
+For functions defined on the moving frame, $f = f(\bm x,t)$, we define the characteristic (material) derivative as
+\[
+	\frac{Df(\bm x, t)}{Dt} \equiv \frac{\partial}{\partial t} f \big( \bm x( \bm{\hat{x}}, t), t \big)
+			= f_t(\bm x,t) + \bm v(\bm x,t) \cdot \nabla_{\bm x} f(\bm x,t),
+\]
+where $\bm{\hat{x}} = \bm x^{-1}(\bm x, t) \in \hat{\Omega}$.
+
+
+\section{Analysis of Mechanics}
+
+The energetic variational approach is a framework connecting energy laws to partial differential equations.
+The principles and laws in this approach originate from thermodynamics and classical mechanics.
+We begin by introducing the first two Laws of Thermodynamics.
+
+\subsection{Laws of Thermodynamics}
+
+In this section, functionals are denoted using script letters.
+Let $\mathcal K(\bm x,\bm v,t)$ represent the {kinetic energy} of a system, 
+\[
+	\mathcal K(\bm x,\bm v, t) = \int_{\Omega(t)} \frac12 \rho(\bm x, t) \bm v^T(\bm x,t)\bm v(\bm x,t) \, d\bm x,
+\]
+$\mathcal F(\bm x,\bm F, t)$ the {internal energy}, $\mathcal Q$ the {heat}, and $\mathcal W$ the external work.
+The First Law of Thermodynamics states that the rate of change in the kinetic and internal energy is the difference of heat and work:
+\begin{equation} \label{first law of thermodynamics}
+	\frac{d}{dt}( \mathcal K+\mathcal F)	=	\frac{d\mathcal Q}{dt} + \frac{d\mathcal W}{dt}.
+\end{equation}
+
+
+The Second Law of Thermodynamics relates the temperature $T$, which we take to be a constant, the {entropy} $\mathcal S$, the heat, and the system's \emph{dissipation}, 
+$\Delta(\Omega,\bm v, t) \ge 0$,
+\begin{equation} \label{second law of thermodynamics}
+	T\frac{d}{dt} \mathcal S	=	\frac{d\mathcal Q}{dt} + \Delta.
+\end{equation}
+This Second Law states that the rate of entropy is determined by dissipation and heat, and can be derived by statistical mechanics
+with the assumption of a {fundamental postulate} that ``the system is uncorrelated to some point in the past.''
+This postulate asserts that there exists some time in the (distant) past that is far enough from the current time so that the past configuration
+of the system at that time has no influence upon the current system.
+
+Taking the difference of (\ref{first law of thermodynamics}) and (\ref{second law of thermodynamics}), 
+we relate the \emph{total energy}, $\mathcal H = \mathcal K + (\mathcal F-T\mathcal S) = \mathcal K + \mathcal U$,
+where $\mathcal U$ is the potential energy (Helmholtz free energy), to the dissipation,
+\[
+	\frac{d}{dt}\mathcal H		=	-\Delta + \frac{d\mathcal W}{dt}.
+\]
+For our purposes, it suffices to consider a \emph{closed} system, where there is no external work present:
+\begin{equation}	\label{energy dissipation}
+	\frac{d}{dt}\mathcal H		=	-\Delta.
+\end{equation}
+Since $\Delta \ge 0$, equation (\ref{energy dissipation}) is a natural energy estimate for the mechanical system.
+
+For purposes of variational analysis, it is important to realize that the quantities introduced in this section are integral functionals:
+namely, we have
+\begin{align*}
+	\mathcal H(\bm x, \bm v, \bm F, t)		&=\mathcal K(\bm x, \bm v, t) + \mathcal U(\bm x, \bm F, t)
+									= \int_{\Omega(t)} \frac12 \rho(\bm x, t) \bm v^T(\bm x,t)\bm v(\bm x,t) +  U(\bm x, \bm F,t) \, d\bm x\\
+\intertext{and}
+	\Delta(\bm x, \bm v, t)		&= \int_{\Omega(t)} \gamma(\bm x, t) \Phi(\bm v, \bm v) \, d\bm x.
+\end{align*}
+We note that $\Delta$ is required to be a symmetric, quadratic, and convex functional of $\bm v$.
+The symmetry follows from the assumption of \emph{microscopic reversibility},
+which is the assumption that the irreversible macroscopic mechanics are determined reversible microscopic motions and that
+any microscopic motion that occurs is only equally as likely to occur as its reverse motion; this assumption constrains the statistical mechanics of the microscopic system. 
+The quadratic form follows from \emph{linear response theory}, which requires dissipative forces to be linearly proportional to the velocity.
+The convexity of $\Delta$ follows by non-negativity, which is necessary for the second law of thermodynamics to hold.
+
+\subsection{Flow map and velocity spaces}
+In many systems, the spaces of the flow map and velocity must be constrained to preserve some physical quality,
+such as the conservation of mass or incompressibility.
+Thus, we cannot always assume these spaces are linear.
+We denote some prescribed space of flow maps for $\bm x \in \mathcal M$ with tangent space $T_{\bm x}\mathcal M$,
+and for the velocity $\bm v \in \mathcal M_V$ with tangent space $T_{\bm v}\mathcal M_V$. 
+
+
+
+\subsection{Force Balance}
+The laws of thermodynamics provide global information about the dynamic system, though they do not give information
+on how the system is configured (i.e.~how the density is distributed in space) at any given time.
+The configuration of the system can be described by the flow map $\bm x(\bm \hat{x},t)$ and its velocity $\bm v(x,t)$.
+In terms of these functions, we define various \emph{forces} present in the system,
+\[
+	\bm f_i \equiv \bm f_i(\bm x,\bm v,t),	\qquad i=1,\ldots,N_f,
+\]
+where the relationship between the forces, the flow map, and the velocity must be prescribed in some manner.
+
+To determine the flow map, we require the prescribed forces to satisfy the Law of Force Balance,
+which provides a (nonlinear) equation that the flow map and velocity must satisfy.
+
+\begin{proposition} [Force Balance Law]
+For closed dynamical systems, the sum of all forces is 0:
+\[
+	\sum_{i=1}^{N_f} \bm f_i(\bm x,\bm v,t) = \bm{0}.
+\]
+\end{proposition}
+
+Now, we set up a framework for defining the present forces in a given system,
+which requires only expressions for the total energy, the dissipation, and the admissible sets of flow maps and velocities,
+along with the tangent spaces for these maps.
+
+In most applications, we require only three forces: the inertial, the conservative, and the dissipative force,
+so that our force balance law requires
+\[
+	\bm f_\mathrm{inert} + \bm f_\mathrm{cons} + \bm f_\mathrm{diss} = 0.
+\]
+These forces are defined by
+\begin{align}
+	\bm f_\mathrm{inert}(\bm x, \bm v, t)	&\equiv	-\rho(\bm x, t) \bm v(\bm x, t),	\\
+	\bm f_\mathrm{cons}(\bm x, t)		&\equiv	-\frac{\delta \mathcal{U}}{\delta \bm x},	\\
+	\bm f_\mathrm{diss}(\bm x, \bm v, t)	&\equiv	-\frac{\delta \frac{_1}{^2} \Delta}{\delta \bm v}.
+\end{align}
+These forces are defined by the Least Action Principle and the Maximum Dissipation Principle,
+which we now show in the remainder of this section.
+
+
+
+
+\subsubsection{Conservative Systems and the Least Action Principle}
+The \emph{action} functional is defined as the Legendre transform of the total energy with respect to the velocity, integrated over time: this gives
+\[
+	\mathcal A(\bm x, \bm v, t)		\equiv	\int_0^T \mathcal K(\bm x, \bm v, t) - \mathcal U(\bm x, t) \, dt.
+\]
+The Least Action Principle states that the variation of the action is zero for conservative systems.
+This implies that the action of a system is at a critical value when the dynamics are driven by kinetic and conservative forces alone.
+\begin{proposition}[Least Action Principle]
+Suppose the dynamics of a conservative system are described by the flow map and velocity pair, $\bm x$ and $\bm v$.
+For a conservative system, the Least Action Principle holds: for all $\bm \delta \bm x \in T_{\bm x}\mathcal M$,
+\[
+	\delta \mathcal{A}[\bm \delta \bm x(t)]	=	0.
+\]
+\end{proposition}
+
+Taking the variation with respect to $\bm x$ and an application of integration by parts immediately shows that the Least Action Principle implies
+\begin{align*}	\label{least action}
+	0 	&= 	\frac{d}{d\varepsilon}\bigg|_{\varepsilon=0} \int_0^T \mathcal K(\bm x_\varepsilon,\bm{v}_\varepsilon,t) 
+																	- \mathcal U(\bm x_\varepsilon,t)\, dt	\\
+%		&=	\int_0^T \int_{\Omega(t)}	{\rho}({\bm x},t){\bm v}({\bm x}, t)\cdot \frac{_{D}}{^{D t}} \bm \delta \bm x
+%										-\frac{\delta \mathcal{U}}{\delta \bm x} \cdot \bm \delta \bm x \, d\bm x dt	\\
+		&=	\int_0^T \int_{\Omega(t)}	\bigg( -{\rho}({\bm x},t)\frac{D \bm v}{D t}({\bm x}, t) -\frac{\delta \mathcal{U}}{\delta \bm x} \bigg) \cdot \bm \delta \bm x \, d\bm x dt	\\
+		&=	\int_0^T \int_{\Omega(t)} \bigg( \bm f_\mathrm{inert}(\bm x, \bm v, t) + \bm f_{\mathrm{cons}}(\bm x, t) \bigg) \cdot \bm \delta \bm x \, d\bm x dt,
+\end{align*}
+where $\bm v_\varepsilon = \partial \bm x_{\varepsilon} / \partial t$ and $\bm \delta \bm x = \frac{\partial}{\partial \varepsilon} \big|_{\varepsilon=0}\bm x_\varepsilon$.
+We see that in conservative systems, when $f_\mathrm{diss} = 0$, the least action principle is consistent with the law of force balance.
+
+
+
+\subsubsection{Dissipative Systems and the Maximum Dissipation Principle}
+The \emph{maximum dissipation principal} defines the relationship between the dissipative force and the dissipation functional.
+\begin{proposition}\label{Maximimum Dissipation Principle}
+The dissipative forces are in the direction of steepest descent of the dissipation funcitonal.
+Consequently, the velocity of the dissipation must satisfy
+\begin{equation} \label{diss principle}
+	\frac{\delta \frac{_1}{^2}\Delta}{\delta \bm v} = -f_\mathrm{diss},
+\end{equation}
+where the variation is taken with respect to the velocity.
+\end{proposition}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\subsection{An example}
+\paragraph{Inviscid fluid flow}
+Whenever taking the variation with respect to the flow map, it is necessary to write the total energy as a functional in the Lagrangean coordinates.
+Thus, we change the coordinates of our energies so that the variation of the Action can be evaluated.
+Consider the energy of an inviscid fluid:
+\begin{align*}
+	\mathcal{H} 	&= \int_{\Omega(t)} \frac12\rho(x,t) \big|\bm v^T(x,t)\big|^2 + \omega( \rho(x,t) )\, dx	\\
+				&= \int_{\Omega(0)} \frac12\hat{\rho}(\hat{x},0) \big|\hat{\bm v}(\hat{x},t) \big|^2
+								+ \omega\bigg( \frac{\hat{\rho}(\hat{x},0)}{\hat{J}(\hat{x},t)} \bigg){\hat{J}(\hat{x},t)}\, d\hat{x}.
+\end{align*}
+Thus, the Lagrangean for this system is given by
+\[	\mathcal{L}	= \int_{\Omega(0)} \frac12\hat{\rho}(\hat{x},0) \big|\hat{\bm v}(\hat{x},t) \big|^2
+								- \omega\bigg( \frac{\hat{\rho}(\hat{x},0)}{\hat{J}(\hat{x},t)} \bigg){\hat{J}(\hat{x},t)}\, d\hat{x}.
+\]
+Taking the variation of the action, we have by the Least Action Principle
+\begin{align*}
+	\delta\mathcal A	&= \frac{d}{d\varepsilon}\bigg|_{\varepsilon=0} 
+						\int_0^T \int_{\Omega(0)} \frac12\hat{\rho}(\hat{x},0) \big|\hat{\bm v}(\hat{x},t)+\varepsilon\bm\delta\hat{\bm v}(\hat{x},t))\big|^2\\
+					&\qquad\quad		- \omega\bigg( \frac{\hat{\rho}(\hat{x},0)}{\det\big(\hat{\bm F}(\hat{x},t)+\varepsilon \bm\delta\bm\hat{F}(\hat{x},t)\big)} \bigg)
+								{\det\big(\hat{\bm F}(\hat{x},t)+\varepsilon \bm\delta\bm\hat{F}(\hat{x},t)\big)}\, d\hat{x}dt	\\
+					&= \int_0^T \int_{\Omega(0)} \hat{\rho}(\hat{x},0) \hat{\bm v}(\hat{x},t)\cdot\bm\delta\hat{\bm v}
+							- \frac{d}{d\varepsilon}\bigg|_{\varepsilon=0} \bigg[
+								\omega\bigg( \frac{\hat{\rho}(\hat{x},0)}{\det\big(\hat{\bm F}(\hat{x},t)+\varepsilon \bm\delta\bm\hat{F}(\hat{x},t)\big)} \bigg)
+								{\det\big(\hat{\bm F}(\hat{x},t)+\varepsilon \bm\delta\bm\hat{F}(\hat{x},t)\big)}\bigg]\, d\hat{x}dt	\\
+				&= \int_0^T \int_{\Omega(0)} -\hat{\rho}(\hat{x},0) \frac{\partial}{\partial t}\hat{\bm v}(\hat{x},t)\cdot\bm\delta\hat{\bm x}
+							- \frac{d}{d\varepsilon}\bigg|_{\varepsilon=0} \bigg[
+								\omega\bigg( \frac{\hat{\rho}(\hat{x},0)}{\det\big(\hat{\bm F}(\hat{x},t)+\varepsilon \bm\delta\bm\hat{F}(\hat{x},t)\big)} \bigg)
+								{\det\big(\hat{\bm F}(\hat{x},t)+\varepsilon \bm\delta\bm\hat{F}(\hat{x},t)\big)}\bigg]\, d\hat{x}dt	\\
+					&= \int_0^T \int_{\Omega(0)} -\hat{\rho}(\hat{x},0) \frac{\partial}{\partial t}\hat{\bm v}(\hat{x},t)\cdot\bm\delta\hat{\bm x}
+							- \bigg[ \omega_\rho\bigg( \frac{\hat{\rho}(\hat{x},0)}{\hat{J}(\hat{x},t)} \bigg) \bigg(\frac{-\hat{\rho}(\hat{x},0)}{\hat{J}^2(\hat{x},t)}\bigg)
+								\big(\nabla_{x} \cdot \bm\delta\hat{\bm x}\big)\hat{J}^2
+								+ \omega\bigg( \frac{\hat{\rho}(\hat{x},0)}{\hat{J}(\hat{x},t)}\bigg)\big(\nabla_{x} \cdot \bm\delta\hat{\bm x}\big)\hat{J} \bigg] \, d\hat{x}dt,
+\end{align*}
+where we used
+\[
+	\frac{_d}{^{d\varepsilon}}\big|_{\varepsilon=0} \det( \hat{\bm F} + \varepsilon\bm\delta\hat{\bm F} ) 
+			= (\nabla_{\bm x} \cdot \bm \delta \hat{\bm x}) \det( \hat{\bm F} + \varepsilon\bm\delta\hat{\bm F} ) \big|_{\varepsilon=0}
+			= (\nabla_{\bm x} \cdot \bm \delta \hat{\bm x}) \hat{J}.
+\]
+We integrate by parts to move the divergence off of the variation $\bm\delta\hat{\bm x}$ to get
+\begin{align}
+	\delta \mathcal A &= \int_0^T \int_{\Omega(0)} -\hat{\rho}(\hat{x},0) \frac{\partial}{\partial t}\hat{\bm v}(\hat{x},t)\cdot\bm\delta\hat{\bm x}
+							- \bigg[ \omega_\rho\bigg( \frac{\hat{\rho}(\hat{x},0)}{\hat{J}(\hat{x},t)} \bigg) \bigg(\frac{-\hat{\rho}(\hat{x},t)}{\hat{J}^2(\hat{x},t)}\bigg)
+								\big(\nabla_{x} \cdot \bm\delta\hat{\bm x}\big)\hat{J}^2
+								+ \omega\bigg( \frac{\hat{\rho}(\hat{x},0)}{\hat{J}(\hat{x},t)}\bigg)\big(\nabla_{x} \cdot \bm\delta\hat{\bm x}\big)\hat{J} \bigg] \, d\hat{x}dt
+								\nonumber\\
+					&= \int_0^T \int_{\Omega(t)} -{\rho}({x},t) \frac{D\bm v}{D t}({x},t)\cdot\bm\delta{\bm x}
+							- \bigg[ -\rho(x,t) \omega_\rho({\rho}({x},t))\big(\nabla_{x} \cdot \bm\delta{\bm x}\big)
+								+ \omega( \rho({x},t) )\big(\nabla_{x} \cdot \bm\delta{\bm x}\big) \bigg] \, d{x}dt\nonumber\\
+					&= -\int_0^T \int_{\Omega(t)} \bigg[ {\rho}({x},t) \frac{D\bm v}{D t}({x},t)
+							+ \nabla_{\bm x} \Big( \rho(x,t)\omega_\rho({\rho}({x},t))
+								- \omega( \rho({x},t) ) \Big) \bigg]\cdot \bm\delta{\bm x} \, d{x}dt \label{inviscid action}\\
+					&= 0.
+\end{align}
+Taking $p = \rho(x,t)\omega_\rho({\rho}({x},t)) - \omega(\rho({x},t))$, we get $f_\mathrm{cons} = -\nabla p$ and
+\begin{align}
+	\rho_t + \nabla \cdot(\rho v)		&= 0,	\tag{Conservation of Mass}\\
+						{\rho} \frac{D\bm v}{D t} + \nabla p	&= \bm 0,	\tag{Least Action Principle}\\
+												p	&=\rho\omega_\rho({\rho}) - \omega(\rho).
+															\tag{Equation of State}
+\end{align}
+which corresponds to the inviscid Navier-Stokes.
+
+\paragraph{Incompressibility}
+For incompressibility, we must also impose a divergence-free condition on the velocity: $\nabla \cdot \bm v = 0$ and on the variation test functions.
+Namely, it is required that
+\[
+	\det( \hat{\bm F} + \varepsilon \bm\delta\hat{\bm F} ) = 1
+\]
+so that the variations are volume preserving, which leads to a divergence-free condition condition on $\bm\delta\hat{\bm x}$:
+\[
+	\nabla\cdot\bm\delta\hat{\bm x} = \frac{d}{d\varepsilon}\bigg|_{\varepsilon=0} \det( \hat{\bm F} + \varepsilon\bm\delta\hat{\bm F} ) = 0.
+\]
+As in (\ref{inviscid action}), we have
+\begin{align*}
+	\delta \mathcal A &= \int_0^T \int_{\Omega(0)} -\hat{\rho}(\hat{x},0) \frac{\partial}{\partial t}\hat{\bm v}(\hat{x},t)\cdot\bm\delta\hat{\bm x}
+							- \bigg[ \omega_\rho\bigg( \frac{\hat{\rho}(\hat{x},0)}{\hat{J}(\hat{x},t)} \bigg) \bigg(\frac{-\hat{\rho}(\hat{x},0)}{\hat{J}^2(\hat{x},t)}\bigg)
+								\big(\nabla_{x} \cdot \bm\delta\hat{\bm x}\big)\hat{J}^2
+								+ \omega\bigg( \frac{\hat{\rho}(\hat{x},0)}{\hat{J}(\hat{x},t)}\bigg)\big(\nabla_{x} \cdot \bm\delta\hat{\bm x}\big)\hat{J} \bigg] \, d\hat{x}dt
+								\nonumber\\
+					&= \int_0^T \int_{\Omega(t)} -{\rho}({x},t) \frac{D\bm v}{D t}({x},t)\cdot\bm\delta{\bm x}
+							- \bigg[ -\rho(x,t) \omega_\rho({\rho}({x},t))\big(\nabla_{x} \cdot \bm\delta{\bm x}\big)
+								+ \omega( \rho({x},t) )\big(\nabla_{x} \cdot \bm\delta{\bm x}\big) \bigg] \, d{x}dt	\\
+					&= \int_0^T \int_{\Omega(t)} -{\rho}({x},t) \frac{D\bm v}{D t}({x},t)\cdot\bm\delta{\bm x} \, d{x}dt,
+\end{align*}
+though this only holds for divergence-free test functions.
+Accordingly, we cannot assume 
+\[
+	{\rho}({x},t) \frac{D\bm v}{D t}({x},t)	= 0.
+\]
+Instead, we invoke the \emph{Helmholtz's Decomposition theorem}, which we introduce:
+\begin{lemma} [Helmholtz's Decomposition]
+We can decompose any smooth vector field into a conservative and divergence-free term:
+\[
+	\bm w(\bm x) = \nabla p(\bm x) + \big( \nabla\times\bm q + \nabla h \big),
+\]
+where $h$ is a harmonic function that satisfies $\nabla \cdot \nabla h\equiv0$.
+It then follows that if $\int_{\Omega} \bm w \cdot \bm\delta\bm x\,d\bm x=0$ for all divergence free $\bm\delta\bm x$, then $\bm w$ is conservative:
+\begin{equation}	\label{conservative field}
+	\bm w = \nabla p.
+\end{equation}
+\end{lemma}
+
+We assume the Helmholtz Decomposition theorem to be given and we show that (\ref{conservative field}) must hold.
+Set $\bm\delta\bm x = \nabla\times\bm q + \nabla h.$
+Then, we show that $\nabla\times\bm q + \nabla h = \bm 0$:
+\begin{align*}
+	0	&=	\int_{\Omega} \bm w \cdot \bm\delta\bm x\, d\bm x	\\
+		&=	\int_{\Omega} (\nabla p + \nabla\times \bm q + \nabla h) \cdot (\nabla\times\bm q + \nabla h)\, d\bm x	\\
+		&=	\int_{\Omega}\nabla p\cdot(\nabla\times \bm q + \nabla h) + |\nabla\times\bm q + \nabla h|^2\, d\bm x	\\
+		&=	\int_{\Omega}\nabla\times\nabla p \cdot \bm q - p \nabla\cdot\nabla h + |\nabla\times\bm q + \nabla h|^2\, d\bm x	\\
+		&=	\int_{\Omega} |\nabla\times\bm q + \nabla h|^2\, d\bm x,
+\end{align*}
+as desired.
+
+Hence, for our example of incompressible flow, we have
+\[
+	{\rho}({x},t) \frac{D\bm v}{D t}({x},t) = -\nabla p_1,
+\]
+for some differentiable function $p_1$.
+We remark that this $p_1$ is a Lagrange multiplier for the incompressibility condition, without physical interpretation.
+Thus, we recover the incompressible Navier-Stokes equation:
+\begin{align}
+	\rho_t + \nabla \cdot(\rho v)			&= 0,	\tag{Conservation of Mass}\\
+	{\rho} \frac{D\bm v}{D t} + \nabla {p_1}	&= \bm 0,	\tag{Least Action Principle}\\
+					\mathrm{div}\, \bm v	&= 0.	\tag{Incompressibility}
+%								p	&=\rho\omega_\rho({\rho}) - \omega(\rho). \tag{Equation of State}
+\end{align}
+
+
+
+
+
+
+
+
+\paragraph{Viscous Fluid Flow}
+Consider the example of inviscid fluid flow, as above, though we now introduce a nontrivial dissipation functional corresponding to a viscous forces:
+\[
+	\Delta(\bm v, \bm v)	=	\int_{\Omega(t)} \frac{\mu}{2} \big( | \nabla_{\bm x} \bm v|^2 + | \nabla_{\bm x}\cdot \bm v|^2 \big) \, dx,
+\]
+which we note is convex, symmetric, and quadratic in $\bm v$.
+We take a variation $\bm\delta\bm v$ that satisfies $\bm \delta\bm v\big|_{\partial\Omega}=0$;
+this gives
+\begin{align*}
+	\delta_{\bm v} \Delta	&=	\frac{d}{d\varepsilon}\bigg|_{\varepsilon=0} 
+					\int_{\Omega(t)} \frac{\mu}{2} \big( | \nabla_{\bm x} \bm v + \varepsilon\nabla_{\bm x} \bm\delta\bm v|^2 
+									+ |\nabla_{\bm x} \cdot\bm v + \varepsilon\nabla_{\bm x} \cdot\bm\delta\bm v|^2 \big) \, dx\\
+				&=	\int_{\Omega(t)} \mu \big( \nabla_{\bm x} \bm v:\nabla_{\bm x} \bm\delta\bm v
+									+ (\nabla_{\bm x} \cdot\bm v )(\nabla_{\bm x} \cdot\bm\delta\bm v) \big) \, dx\\
+				&=	-\int_{\Omega(t)} \mu \big( \mathrm{div}(\nabla \bm v) + \nabla(\mathrm{div}\,\bm v) \big) \cdot \bm\delta\bm v\, d\bm x\\
+				&=	\int_{\Omega(t)} 2f_\mathrm{diss}\cdot \bm\delta\bm v\, d\bm x.
+\end{align*}
+
+Thus, we have
+\begin{align}
+	\rho_t + \nabla \cdot(\rho v)		&= 0,	\tag{Conservation of Mass}\\
+	{\rho} \frac{D\bm v}{D t} + \nabla p	&= \mu \frac{\mathrm{div}(\nabla \bm v) + \nabla(\mathrm{div}\,\bm v)}{2},	\tag{Force Balance}\\
+							p	&=\rho\omega_\rho({\rho}) - \omega(\rho).
+															\tag{Equation of State}
+\end{align}
+which corresponds to Navier-Stokes for a visous compressible flow.
+
+\paragraph{Incompressibility}
+Again, we consider the effects of incompressible flow.
+As in the inviscid case, we have
+\[
+	{\rho}({x},t) \frac{D\bm v}{D t}({x},t)	= \nabla p_1.
+\]
+For the dissipative forces, we see that $\mathrm{div} \, \bm v = 0$ gives
+\[
+	\Delta(\bm v, \bm v)	=	\int_{\Omega(t)} \frac{\mu}{2} | \nabla_{\bm x} \bm v|^2\, dx,
+\]
+leading to
+\begin{align*}
+	\delta \Delta	&=	\frac{d}{d\varepsilon}\bigg|_{\varepsilon=0} 
+					\int_{\Omega(t)} \frac{\mu}{2} | \nabla_{\bm x} \bm v + \varepsilon\nabla_{\bm x} \bm\delta\bm v|^2 \, dx\\
+				&=	\int_{\Omega(t)} \mu \nabla_{\bm x} \bm v:\nabla_{\bm x} \bm\delta\bm v \, dx\\
+				&=	-\int_{\Omega(t)} \mu\, \mathrm{div}(\nabla \bm v)\cdot \bm\delta\bm v\, d\bm x,\\
+				&=	\int_{\Omega(t)} 2 f_\mathrm{diss} \, d\bm x.
+\end{align*}
+As for the conservative terms, this does not imply $2f_\mathrm{diss}-\mu \mathrm{div}(\nabla \bm v)=0$.
+Instead, we use the Helmholtz's Decomposition to show that we have a conservative field,
+\[
+	\frac{\mu}{2}\mathrm{div}(\nabla \bm v) - f_\mathrm{diss}	= \nabla p_2.
+\]
+Set $\tilde{{p}} = p_2-p_1$.
+Then, the equations for viscous incompressible flow are
+\begin{align}
+			\rho_t + \nabla \cdot(\rho v)		&= 0,	\tag{Conservation of Mass}\\
+	{\rho} \frac{D\bm v}{D t} + \nabla {\tilde{p}}	&= \frac{\mu}{2} \mathrm{div}(\nabla \bm v),	\tag{Force Balance}\\
+						\mathrm{div}\, \bm v	&= 0.	\tag{Incompressibility}
+\end{align}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\section{Numerics}
+
+
+We now turn our attention to the discretization of the force balance law, where we consider the inertial and conservative forces of the Least Action Principle and
+the dissipative force of the Maximum Dissipation Principle.
+In general, we need to discretize the following problem: find $\bm x \in \mathcal M$ and $\bm v \in \mathcal M_V$ such that
+\[
+	\bm f_\mathrm{inert} + \bm f_\mathrm{cons} + \bm f_\mathrm{diss} = 0,
+\]
+where the forces are defined by
+\begin{align*}
+	\bm f_\mathrm{inert}	&= -\rho \bm v,	\\
+	\bm f_\mathrm{cons}	&= -\frac{\delta \mathcal{U}}{\delta \bm x},	\\
+	\bm f_\mathrm{diss}	&= -\frac{\delta \frac{_1}{^2} \Delta}{\delta \bm v}.
+\end{align*}
+In order to discretize, we write the problem in its weak form, though this is not a trivial task since
+the dissipative force is obtained by a variation of the velocity, whereas the other forces come from a variation of the flow map.
+To work around this difficulty, we consider the semi-discrete problem.
+
+
+We discretize (\ref{continuous minimization principle}) in a straightforward way;
+we partition the time domain
+\[
+	0 = t_0 < t_1 < \cdots < t_m =T
+\]
+and define $\Delta t_i = t_i-t_{i-1}$.
+This yields a semi-discrete formulation where a collocation scheme discretizes the time variable.
+For this manuscript, we restrict our attention to a first order implicit time integration scheme.
+
+Let $\bm x^i(\cdot) = \bm x( \cdot, t_i)$ for $i=0,\ldots,m$ denote the flow map at the time steps.
+Whenever ${\bm v}(t_i) = \frac{\bm x_i - \bm x_{i-1}}{\Delta t_i}$, we can write the dissipative force as
+\[
+	\bm f_\mathrm{diss}(\bm v) 	= -\frac{\delta \frac{_1}{^2} \Delta}{\delta \bm v}(\bm v) 
+							= -\Delta t_i \frac{\delta \frac{_1}{^2} \Delta}{\delta \bm x_i}\left(\frac{_{\bm x_i - \bm x_{i-1}}}{^{\Delta t_i}}\right),
+\]
+which allows us to recast the problem in weak form: for $i=1,\ldots, m$, find $\bm x_i \in \mathcal M$ such that
+\[
+	\left( -\rho(\hat{\bm x}) \frac{\bm x_i - \bm x_{i-1}}{\Delta t_i} -\frac{\delta \mathcal{U}}{\delta \bm x_i}\big(\bm x_i\big)
+			-\Delta t_i \frac{\delta \frac{_1}{^2} \Delta}{\delta \bm x_i}\left(\frac{_{\bm x_i - \bm x_{i-1}}}{^{\Delta t_i}}\right), \bm \delta\bm x\right) =0
+\]
+for all $\bm \delta \bm x \in \mathcal M$.
+We recognize that for each time step, this is equivalent to the minimization problem
+\[
+	\min_{\bm x_i \in \mathcal M} \int_{\hat{\Omega}} \frac12\hat{\rho}\frac{|\bm x_i - \bm x_{i-1}|^2}{\Delta t_i^2} + U(\bm x_i)
+				+ \frac{\Delta t_i}{2}\gamma \Phi\left(\frac{{\bm x_i - \bm x_{i-1}}}{{\Delta t_i}},\frac{{\bm x_i - \bm x_{i-1}}}{{\Delta t_i}}\right)\, d\bm x,
+\]
+where we note $\hat{\rho} = \hat{\rho}(\hat{\bm x})$ and $\gamma = \gamma(\hat{\bm x})$.
+
+
+
+To fully discretize the problem, we want to approximate each $\bm x^i_h \approx \bm x^i \in \mathcal M$.
+We define a finite dimensional subspace $\mathcal{M}_h \subset \mathcal M$ for the flow maps, $\bm x_h^i$.
+To construct $\mathcal M_h$, we fix some triangulation initial $\hat{\mathcal T}_h$ of the fixed domain, $\hat \Omega$,
+and define $\mathcal A (\hat{\mathcal T}_h)$ as the set of affine equivalent triangulations to $\hat{\mathcal T}_h$.
+Then, the set $\mathcal M_h$ is given by
+\[
+	\mathcal{M}_h \equiv \Big\{ \bm x \, \big| \, \bm x: \hat{\mathcal{T}}_h \mapsto \mathcal T_h' \in \mathcal A(\hat{\mathcal T}_h) \Big\}.
+\]
+Essentially, each $\bm x_h \in \mathcal M_h$ corresponds to a family of affine isoparametric maps from elements in $\hat{\mathcal T}_h$
+to elements in some triangulation in $\mathcal A (\hat{\mathcal{T}}_h)$.
+We then define the discretized velocity as $\bm v_h(t_i) \equiv \frac{\bm x^i - \bm x^{i-1}}{\Delta t_i}$.
+
+This gives the discrete problem
+
+
+
+
+
+
+
+
+
+
+
+
+These maps take triangulations of the domain $\Omega(0)$ to (potentially curvilinear) triangulations of some new domain $\Omega(t)$
+and can be defined in terms of the location of the nodes of the triangulations;
+let $\{ \bm x^n_i \}_{i=0}^N$ denote the collection of nodes in the triangulation at time $t=t_n$, then
+\[
+	\bm x^n_h(\hat{\bm x}) = \bm x^n_h( \bm x^n_0,\ldots,\bm x_N^n; \hat{\bm x}).
+\]
+
+
+We note that the mechanics underlying the systems considered above are summarized by the force-balance equation of proposition \ref{force balance}.
+\[
+	\frac{\delta (\frac{_1}{^2}\Delta)}{\delta \bm v}-\frac{\delta \mathcal{A}}{\delta \bm x}	= \bm 0.
+\]
+Let $\mathcal{M}$ denote the set of all injective differentiable maps $\bm x:\Omega\times[0,T]\rightarrow\mathbb{R}^d$ satisfying $\bm x(\hat{\bm x},t) = \hat{\bm x} \in \Omega(0)$
+and $\det \partial \bm x/ \partial \hat{\bm x} > 0$.
+We show that the force balance equation is a necessary condition for the minimizer of the following optimization problem.
+
+\begin{lemma}
+Let $\bm x(\cdot,t):\Omega(0)\rightarrow\Omega(t)$ be the flow map minimizing
+\begin{equation}	\label{continuous minimization principle}
+	\lim_{\Delta t \rightarrow 0^+} \min_{\bm x^*(t)\in \mathcal M}
+					\ \left[ \frac{_{\Delta t}}{^2} \Delta\bigg(\frac{\bm x^*(t)-\bm x(t-\Delta t)}{\Delta t},\frac{\bm x^*(t)-\bm x(t-\Delta t)}{\Delta t}\bigg)
+					- \mathcal{A}\big( \bm x^*(t) \big) \right]
+\end{equation}
+for all $0 < t \le T$ also satisfies the force balance equation.
+\end{lemma}
+
+
+Recall that the dissipation takes the form:
+\[
+	\Delta(\bm v(t), \bm v(t)) 	= \int_{\Omega(t)} {\rho}(\bm x)\Phi\big(\bm v(\bm x,t),\bm v(\bm x,t) \big) \, d\bm x.
+\]
+We use a simple consequence of the chain rule:
+\[
+	\frac{\partial}{\partial {\bm v}(t)} \Phi\big({\bm v}({\bm x},t),{\bm v}({\bm x},t) \big) 
+		=	\lim_{\Delta t\rightarrow0^+}\Delta t \frac{\partial}{\partial {\bm x}(t)} 
+			\Phi\bigg(\frac{\bm x(t)-\bm x(t-\Delta t)}{\Delta t},\frac{\bm x(t)-\bm x(t-\Delta t)}{\Delta t} \bigg),
+\]
+to show for all $\bm \delta \bm y$ that
+\[
+	\frac{\delta}{\delta \bm v(t)}\frac{_1}{^2}\Delta(\bm v, \bm v)[\bm \delta \bm y] 
+		= \lim_{\Delta t \rightarrow 0^+} \left\{ \Delta t \frac{\delta}{\delta \bm x(t)}\frac{_1}{^2}
+			\Delta\bigg(\frac{\bm x(t)-\bm x(t-\Delta t)}{\Delta t},\frac{\bm x(t)-\bm x(t-\Delta t)}{\Delta t}\bigg)[\bm \delta \bm y] \right\}.
+\]
+Thus, a necessary condition for the minimizer of (\ref{continuous minimization principle}) is
+\begin{align*}
+	0	&=\lim_{\Delta t \rightarrow 0^+} \left\{ \Delta t \frac{\delta}{\delta \bm x(t)}\frac{_1}{^2}
+				\Delta\bigg(\frac{\bm x(t)-\bm x(t-\Delta t)}{\Delta t},\frac{\bm x(t)-\bm x(t-\Delta t)}{\Delta t}\bigg)
+			-	\frac{\delta}{\delta \bm x(t)} \mathcal{A}(\bm x(t))	\right\}	\\
+		&=	\frac{\delta\frac{_1}{^2}\Delta}{\delta \bm v(t)}(\bm v(t), \bm v(t)) -	\frac{\delta\mathcal A}{\delta \bm x(t)}(\bm x(t)).
+\end{align*}
+		
+
+We discretize (\ref{continuous minimization principle}) in a straightforward way;
+we partition the time domain
+\[
+	0 = t_0 < t_1 < \cdots < t_m =T
+\]
+and define $\Delta t_i = t_i-t_{i-1}$.
+This yields a semi-discrete formulation where a collocation scheme discretizes the time variable.
+Let $\bm x^n(\cdot) = \bm x( \cdot, t_n)$ for $i=0,\ldots,m$.
+
+We define a finite dimensional subspace $\mathcal{M}_h \subset \mathcal M_h$ of bounded injective maps $\bm x_h$ with domain $\Omega(0)$.
+For our purposes, we assume that these maps are given by a finite collection of isoparametric maps, as used in finite element methods.
+These maps take triangulations of the domain $\Omega(0)$ to (potentially curvilinear) triangulations of some new domain $\Omega(t)$
+and can be defined in terms of the location of the nodes of the triangulations;
+let $\{ \bm x^n_i \}_{i=0}^N$ denote the collection of nodes in the triangulation at time $t=t_n$, then
+\[
+	\bm x^n_h(\hat{\bm x}) = \bm x^n_h( \bm x^n_0,\ldots,\bm x_N^n; \hat{\bm x}).
+\]
+
+
+From this perspective, we minimize a discretization of (\ref{continuous minimization principle}) by rearranging the nodes in the triangulation,
+as in moving mesh methods.
+Thus, the discrete problem we solve is:
+\begin{equation}	\label{discrete problem}
+	\min_{\bm x_h^* \in \mathcal{M}_h} \left\{ \frac{_{\Delta t_n}}{^2}\Delta \bigg( \frac{\bm x_h^*-\bm x_h^{n-1}}{\Delta t_n},\frac{\bm x_h^*-\bm x_h^{n-1}}{\Delta t_n}\bigg)
+			- \mathcal{A}(\bm x_h^*,\bm F_h) \right\}.
+\end{equation}
+The minimizer is taken to be the discrete flow map $\bm x_h^n$.
+To guarantee the existence of such a minimizer, we require convexity of the dissipation and the total energy.
+It can be helpful to use Hermite isoparametric maps so that the Lagrangean density $\hat{\rho}_h(\hat{\bm x},t) = \hat{\rho}(\hat{x},0)/\det(\hat{\bm F}_h(\hat{x},t))$
+is continuous.
+
+\paragraph{Adaptivity}
+In most applications, the action functional tends to infinity if $\det \partial \bm x/ \partial\hat{\bm x} \rightarrow 0$ anywhere on the domain;
+this corresponds to the great amount of energy required to truly compress a control volume into a surface, curve, or point.
+Nevertheless, spatial adaptivity can improve the convergence rates of the optimization problem as line searches in the numerical optimization process
+have greater flexibility in the magnitude of the mesh updates.
+This is true when the flow map is compressing in a particular region, and a coarser triangulation can be used as it compresses without such a strong influence on the energy.
+Furthermore, algorithms for time adaptivity can often be formulated as decreasing the total energy by some prescribed amount at each time step.
+These techniques fit quite naturally into this problem, where we can either control the dissipation or the total energy.
+
+
+
+
+\subsection{Test Problems}
+
+We consider a few simple test problems of a single spatial dimension with $\Omega(0) = [-1,1]$ to demonstrate this method.
+Although the functions in the the discrete optimization problem (\ref{discrete problem}) are convex, it is nontrivial to find the minimizer.
+Attempts to minimize using the conjugate gradient method and quasi-Newton Methods (e.g.~with BFGS approximate Hessians) would
+not converge, even imposing the Wolfe conditions for the line search of the update stepsize.
+In the case of quasi-Newton with BFGS, the Wolfe conditions can be used to prove non-singularity of the approximate Hessian,
+though this matrix became numerically singular.
+Thus, we use Newton's method (with the analytic Hessian) to solve the minimization problem.
+Since the functions are convex, the Hessian is positive definite.
+We present the result of some experiments below.
+
+\subsubsection{Heat Equation}
+
+Let $\hat{\rho}(\cdot)$ be the given initial density function.
+The energy of the heat equation is given by
+\[
+	\mathcal H (\bm x,   F) = \int_{\Omega(t)} \rho(  x,t) \log\left({\rho(  x,t)}\right)\, d  x
+	=	\int_{\Omega(0)} \hat{\rho}(\hat{  x}) \log \big(\hat{\rho}(\hat{  x})/ \det\hat{  F}(\hat{  x},t)\big) \, d\hat{  x},
+\]
+where we used the conservation of mass $\rho(  x(\hat{  x},t),t) =  \hat{\rho}(\hat{  x})/\det\hat{  F}(\hat{  x},t)$.
+(Note that there is no kinetic energy.)
+The dissipation is given by Darcy's damping,
+\[
+	\Delta (  v,   v)	=	\int_{\Omega(t)} \rho(  x,t) \big|  v(  x,t) \big|^2\, d  x	
+					=	\int_{-1}^1 \hat{\rho}(\hat{  x}) \big|\hat{  v}(\hat{  x},t) \big|^2\, d\hat{  x}.
+\]
+Following the examples in \S 3, one can show this leads to the heat equation.
+
+In the case of a single spatial dimension, the flow maps take the form
+\[
+	  x_h^n(\hat{  x}) = \sum_{i=0}^N x_i^n b_i(\hat{  x}),
+\]
+where the basis functions $b_i$ are the nodal basis functions for a finite element space.
+Furthermore, 
+\[
+	\det\hat{F}_h(\hat{ x},t_n) = {x}_i^n - {x}^n_{i-1} \equiv \Delta \hat{x}_i,	\quad	\hat{ x}_{i-1} \le \hat{ x} \le \hat{ x}_i.
+\]
+
+Hence, the function we aim to minimize is
+\begin{multline*}
+	\int_{-1}^1 \frac{\Delta t}{2}\hat{\rho}(\hat{  x}) \left(\frac{x_h^n(\hat{  x}) - x_h^{n-1}(\hat{  x})}{\Delta t}\right)^2
+							+ \hat{\rho}(\hat{  x}) \log\left(\frac{\hat{\rho}(\hat{  x})}{\det\hat{F}_h(\hat{  x},t)}\right) \, d\hat{  x}\\
+			=	\sum_{i=1}^N \Delta \hat{x}_i \int_0^1 
+						\hat{\rho}(\hat{x}) \frac{\big[\hat{x}(x_i^n-x_i^{n-1})-(1-\hat{x})(x_{i-1}^n-x_{i-1}^{n-1})\big]^2}{2\Delta t}
+							+ \hat{\rho}(\hat{  x}) \log\left(\frac{\hat{\rho}(\hat{  x})}{\Delta x_i^n}\right) \, d\hat{x}.
+\end{multline*}
+
+
+\paragraph{References}
+\begin{itemize}
+	\item M. Chen, C. Liu, S. Majd, S. Xu, ``Modeling and Simulating Asymmetrical Conductance Changes in Gramicidin Pores.'' 
+	\item R. Eisenberg, Y. Hyon, C. Liu, ``Energy Variational Analysis of Ions in Water and Channels: Field Theory for Primitive Models of Complex Ionic Fluids.''
+			J. Chemical Phys. 133,104104 (2010).
+	\item S.V. Fomin, I.M. Gelfand, ``Calculus of Variations.'' Prentice-Hall, Inc.  Englewood Cliffs, New Jersey (1963).
+	\item Johannes Forster, ``Methematical Modeling of Complex Fluids'' Master's Thesis, University of W\"urzberg (2013).
+	\item C. Liu, ``An Introduction of Elastic Complex Fluids: An Energetic Variational Approach.''  Dept.~Math., Penn State University.
+	\item L. Onsager, ``Reciprocal Relations in Irreversible Processes. I'' Physical Review 31, pp.~405--426 (1931).
+	\item L. Onsager, ``Reciprocal Relations in Irreversible Processes. II'' Physical Review 31, pp.~2265--2279 (1931).
+\end{itemize}
+
+\end{document}
