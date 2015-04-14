@@ -1,0 +1,19 @@
+function DDE = potentialHess(x,xhat,f,ddphi)
+%%  Evaluate the Hessian of Potential's energy for the FE flow map
+N  = length(x)-1;
+ddE = @(y,dxhat,f,ddphi) gallery('tridiag',...
+            y*(1-y)*dxhat(2:N-1).*f(2:N-1).*ddphi(2:N-1),...
+            y*y*dxhat(1:N-1).*f(1:N-1).*ddphi(1:N-1)...
+            +(1-y)*(1-y)*dxhat(2:N).*f(2:N).*ddphi(2:N),...
+            y*(1-y)*dxhat(2:N-1).*f(2:N-1).*ddphi(2:N-1) );
+
+xm    = .5*(x(1:N)+x(2:N+1));
+xhatm = .5*(xhat(1:N)+xhat(2:N+1));
+dxhat = -xhat(1:N)+xhat(2:N+1);
+
+%%  Evaluate Energy Hessian element-wise via quadrature (Simpson's rule)
+DDE = (  ddE(0, dxhat,f(xhat(1:N)),ddphi(x(1:N)))...
+      +4*ddE(.5,dxhat,f(xhatm),ddphi(xm(1:N)))...
+      	+ddE(1, dxhat,f(xhat(2:N+1)),ddphi(x(2:N+1)))   )/6;
+
+clear xhatm xm dxhat;

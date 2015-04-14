@@ -1,0 +1,19 @@
+function DDE = fickHess(x,xhat,f)
+%%  Evaluate the Hessian of Fick's energy for the FE flow map
+N  = length(x)-1;
+ddE = @(dx,dxhat,f) gallery('tridiag',...
+            -dxhat(2:N-1).*f(2:N-1)./(dx(2:N-1).^2),...
+             dxhat(1:N-1).*f(1:N-1)./(dx(1:N-1).^2)...
+            +dxhat(2:N).*f(2:N)./(dx(2:N).^2),...
+            -dxhat(2:N-1).*f(2:N-1)./(dx(2:N-1).^2));
+
+xhatm = .5*(xhat(1:N)+xhat(2:N+1));
+dx    = -x(1:N)+x(2:N+1);
+dxhat = -xhat(1:N)+xhat(2:N+1);
+
+%%  Evaluate Energy Hessian element-wise via quadrature (Simpson's rule)
+DDE = (  ddE(dx,dxhat,f(xhat(1:N)))...
+      +4*ddE(dx,dxhat,f(xhatm))...
+      	+ddE(dx,dxhat,f(xhat(2:N+1)))   )/6;
+    
+clear xhatm dx dxhat;
